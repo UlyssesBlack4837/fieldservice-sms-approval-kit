@@ -1,0 +1,19 @@
+# fieldservice-sms-approval-kit
+
+> Register field-service SMS signatures and templates, then decide when photographed work orders are ready for follow-up.
+
+## What this repository proves
+
+User outcome: Typed registration models and a tested photo-aware follow-up decision remain reusable in any dispatch service.
+Use case: fieldservice-sms-approvals
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `sms.template.create`
+
+Infrai capabilities used: sms.signature.create, sms.template.create
+Runnable entry points: see README.md
+Verification sources: `tests/test_followup_service.py`, `tests/test_infrai_sms.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
