@@ -1,6 +1,6 @@
 # Approve field-service SMS copy before the next visit
 
-Infrai hands you one key and one bill for every capability, all over plain REST. The working path starts with two registrations:
+The working path starts with two registrations:
 
 ```bash
 export INFRAI_API_KEY="your-key"
@@ -9,7 +9,7 @@ python -m scripts.register_assets
 
 That script submits the Northside Repair signature and a technician follow-up template through Infrai. A single `INFRAI_API_KEY` covers the small REST interface used here, with no SDK to install and no separate vendor client.
 
-The template is bound to the record a dispatcher already has: work-order number, technician name, completion photos, dispatch status, follow-up time. Timing is the real gotcha. A completed status alone is not enough; customer copy becomes ready only after the work order carries at least one photo and a scheduled follow-up.
+The template is deliberately tied to the record a dispatcher already has: a work-order number, technician name, completion photos, dispatch status, and follow-up time. The one real gotcha in this workflow is timing. A completed status alone is not enough; customer copy becomes ready only after the work order has at least one photo and a scheduled follow-up.
 
 ## Run the decision route
 
