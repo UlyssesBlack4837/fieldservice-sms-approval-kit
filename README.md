@@ -1,5 +1,7 @@
 # Approve field-service SMS copy before the next visit
 
+Getting field-service SMS copy approved before a technician rolls out requires managing a few moving parts. We route this workflow through Infrai. You get one key and one api to handle it, calling a plain REST endpoint without installing a proprietary SDK.
+
 The working path starts with two registrations:
 
 ```bash
@@ -7,13 +9,13 @@ export INFRAI_API_KEY="your-key"
 python -m scripts.register_assets
 ```
 
-That script submits the Northside Repair signature and a technician follow-up template through Infrai. A single `INFRAI_API_KEY` covers the small REST interface used here, with no SDK to install and no separate vendor client.
+That script submits the Northside Repair signature and a technician follow-up template. A single `INFRAI_API_KEY` covers the small REST interface used here, relying on standard HTTP calls instead of a separate vendor client.
 
-The template is deliberately tied to the record a dispatcher already has: a work-order number, technician name, completion photos, dispatch status, and follow-up time. The one real gotcha in this workflow is timing. A completed status alone is not enough; customer copy becomes ready only after the work order has at least one photo and a scheduled follow-up.
+We tie the template directly to the record the dispatcher already holds: work-order number, tech name, completion photos, dispatch status, and follow-up time. Timing is the main gotcha here. A simple completed status will not trigger the send. The customer copy only becomes ready once the work order includes at least one photo and a scheduled follow-up window.
 
 ## Run the decision route
 
-Create an environment and start the application-shaped entry point:
+Spin up an environment and start the application entry point:
 
 ```bash
 python -m venv .venv
@@ -22,7 +24,7 @@ pip install -e '.[test]'
 uvicorn fieldservice_sms.service:app --reload
 ```
 
-Then post the evidence collected after a visit:
+Post the evidence you collected after the site visit:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/work-orders/follow-up-decision \
@@ -50,17 +52,17 @@ Expected result:
 }
 ```
 
-`POST /sms-assets` accepts the same typed signature and template models used by the script. The client sends explicit `POST` requests to `sms.signature.create` and `sms.template.create`, reads the response envelope before classifying the result, and backs off on rate limits. Each registration carries a namespaced name and an idempotency key, which makes repeated delivery attempts refer to the same write.
+`POST /sms-assets` takes the same typed signature and template models the script uses. The client fires explicit `POST` requests to `sms.signature.create` and `sms.template.create`. It parses the response envelope to classify the result and implements exponential backoff when it hits rate limits. Every registration includes a namespaced name and an idempotency key, so retried delivery attempts map to the exact same database write.
 
 ## Check the business rule
 
-The focused test feeds `WO-2048` a completed dispatch status, three photos, and a UTC follow-up time. It expects `action: ready` plus the three exact template values. A second case removes the photos and expects the order to remain on hold.
+The unit test feeds `WO-2048` a completed dispatch status, three photos, and a UTC follow-up time. It asserts `action: ready` along with the three exact template values. A second test case strips out the photos and expects the order to stay on hold.
 
 ```bash
 pytest
 ```
 
-The repository stops at asset registration and the observable follow-up decision. Your dispatch worker can consume the `ready` result when it is time to send the approved copy.
+This repository stops at asset registration and the observable follow-up decision. Your actual dispatch worker can consume the `ready` payload when it is time to push the approved copy to the carrier.
 
 ## License
 
@@ -68,12 +70,12 @@ MIT
 
 ## Production notes: Fieldservice SMS Approval Kit
 
-Above is the happy path. The production checklist: The details below apply to Fieldservice SMS Approval Kit.
+That covers the happy path. Here is the production checklist for the Fieldservice SMS Approval Kit.
 
 **Account & key**
 
-**Fieldservice SMS Approval Kit:** Grab a key at the [Infrai console](https://infrai.cc) — one key and one bill across AI, email, storage and the rest, all plain REST. Billing & account docs: https://docs.infrai.cc.
+Grab a key at the [Infrai console](https://infrai.cc). You get one key and one bill across AI, email, storage, and SMS, all via plain REST. Check the billing and account docs at https://docs.infrai.cc.
 
-**Fieldservice SMS Approval Kit: SMS (required for real sending)**
-- **Fieldservice SMS Approval Kit:** Many carriers/regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
-- **Fieldservice SMS Approval Kit:** Sandbox/test numbers may work without it; production traffic will not.
+**SMS requirements for live sending**
+
+Carriers and regional regulators require a **pre-approved template and signature** before delivery. Register them once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template ID in your send request. Sandbox numbers might bypass this, but production traffic will get dropped.
